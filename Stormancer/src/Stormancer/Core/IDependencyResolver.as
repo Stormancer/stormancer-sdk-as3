@@ -8,7 +8,9 @@ package Stormancer.Core
 	public interface IDependencyResolver 
 	{
 		function getComponent(componentName:String) : * ;
-		function registerComponenet(componentName : String, factory : Function):void;
+		function registerComponentFactory(componentName : String, factory : Function):void;
+		function registerComponent(componentName:String, component:Object) : void;
+		function createChildResolver():IDependencyResolver;
 	}
 	
 }

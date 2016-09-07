@@ -1,97 +1,96 @@
-package Stormancer.Transports 
+package Stormancer.Transports
 {
 	import Stormancer.Core.ConnectionState;
 	import Stormancer.Core.IConnection;
 	import Stormancer.Core.ISerializer;
 	import com.worlize.websocket.WebSocket;
 	import flash.utils.ByteArray;
+	import flash.utils.Endian;
 	
 	/**
 	 * ...
 	 * @author Stormancer
 	 */
-	public final class WebSocketConnection implements IConnection 
+	public final class WebSocketConnection implements IConnection
 	{
-		private var _id : Number;
-		private var _connectionDate : Date;
-		private var _metadata : Object = {};
-		private var _account : String;
-		private var _serializer : ISerializer;
-		private var _serializerChosen : Boolean = false;
+		private var _id:Number;
+		private var _connectionDate:Date;
+		private var _metadata:Object = {};
+		private var _account:String;
+		private var _serializer:ISerializer;
+		private var _serializerChosen:Boolean = false;
 		private var _socket:WebSocket;
-		private var _state :Number;
-		private var _application : String;
+		private var _state:Number;
+		private var _application:String;
 		
-		public function WebSocketConnection(id:Number, socket:WebSocket) 
+		public function WebSocketConnection(id:Number, socket:WebSocket)
 		{
-			this._socket = socket;		
+			this._socket = socket;
 			this._id = id;
 			this._connectionDate = new Date();
 			this._state = ConnectionState.Connected;
 		}
 		
-		
 		/* INTERFACE Stormancer.Core.IConnection */
 		
-		public function get id():Number 
+		public function get id():Number
 		{
 			return _id;
 		}
 		
-		public function get connectionDate():Date 
+		public function get connectionDate():Date
 		{
 			return _connectionDate;
 		}
 		
-		public function get metadata():Object 
+		public function get metadata():Object
 		{
 			return _metadata;
 		}
 		
-		public function get account():String 
+		public function get account():String
 		{
 			return _account;
 		}
 		
-		public function get serializer():ISerializer 
+		public function get serializer():ISerializer
 		{
 			return _serializer;
 		}
 		
-		public function set serializer(value:ISerializer):void 
+		public function set serializer(value:ISerializer):void
 		{
 			_serializer = value;
 		}
 		
-		public function get serializerChosen():Boolean 
+		public function get serializerChosen():Boolean
 		{
 			return _serializerChosen;
 		}
 		
-		public function set serializerChosen(value:Boolean):void 
+		public function set serializerChosen(value:Boolean):void
 		{
 			_serializerChosen = value;
 		}
 		
-		public function get connectionState():Number 
+		public function get connectionState():Number
 		{
 			return this._state;
 		}
 		
-		public function get application() : String
+		public function get application():String
 		{
-		return this._application;	
+			return this._application;
 		}
 		
-		public function close():void 
+		public function close():void
 		{
 			this._socket.close();
 		}
 		
-		
-		public function sendSystem(msgId:Number, writer:Function):void 
+		public function sendSystem(msgId:Number, writer:Function):void
 		{
-			var buffer: ByteArray = new ByteArray();
+			var buffer:ByteArray = new ByteArray();
 			buffer.writeByte(msgId);
 			writer(buffer);
 			buffer.position = 0;
@@ -99,21 +98,23 @@ package Stormancer.Transports
 			this._socket.sendBytes(buffer);
 		}
 		
-		public function sendToScene(sceneIndex:Number, route:Number, writer:Function):void 
+		public function sendToScene(sceneIndex:Number, route:Number, writer:Function):void
 		{
-			var buffer :ByteArray = new ByteArray();
+			var buffer:ByteArray = new ByteArray();
 			buffer.writeByte(sceneIndex);
+			buffer.endian = Endian.LITTLE_ENDIAN;
 			buffer.writeShort(route);
+			buffer.endian = Endian.BIG_ENDIAN;
 			writer(buffer);
 			buffer.position = 0;
 			
 			this._socket.sendBytes(buffer);
 		}
 		
-		public function setApplication(account:String, application:String):void 
+		public function setApplication(account:String, application:String):void
 		{
 			this._account = account;
 			this._application = application;
-		}		
+		}
 	}
 }

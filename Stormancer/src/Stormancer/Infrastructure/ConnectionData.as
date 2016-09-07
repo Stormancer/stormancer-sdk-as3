@@ -1,6 +1,7 @@
 package Stormancer.Infrastructure
 {
 	import flash.utils.ByteArray;
+	import org.msgpack.MsgPack;
 	
 	/**
 	 * ...
@@ -31,8 +32,10 @@ package Stormancer.Infrastructure
 				this.Issued = dynamicData.Issued;
 				this.Expiration = dynamicData.Expiration;
 				
-		
-				this.UserData = dynamicData.UserData;
+				if (dynamicData.UserData is ByteArray)
+				{
+					this.UserData = dynamicData.UserData;
+				}
 				
 				this.ContentType = dynamicData.ContentType;
 				this.Version = dynamicData.Version;

@@ -12,7 +12,9 @@ package Stormancer.Infrastructure
 	 */
 	public final class MsgPackSerializer implements ISerializer 
 	{
-		private var _msgPack : MsgPack = new MsgPack(MsgPackFlags.READ_STRING_AS_BYTE_ARRAY);
+		private var _msgPack : MsgPack = new MsgPack(
+		//MsgPackFlags.READ_STRING_AS_BYTE_ARRAY
+		);
 		
 		public function MsgPackSerializer() 
 		{

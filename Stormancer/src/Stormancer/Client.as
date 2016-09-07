@@ -1,17 +1,21 @@
 package Stormancer
 {
 	import Stormancer.Core.ConnectionPacket;
+	import Stormancer.Core.DefaultDependencyResolver;
 	import Stormancer.Core.IConnection;
+	import Stormancer.Core.IDependencyResolver;
 	import Stormancer.Core.ISerializer;
 	import Stormancer.Infrastructure.ApiClient;
 	import Stormancer.Infrastructure.IPacketDispatcher;
 	import Stormancer.Infrastructure.ITransport;
 	import Stormancer.Infrastructure.MsgPackSerializer;
+	import Stormancer.Infrastructure.Route;
 	import Stormancer.Infrastructure.SceneEndpoint;
 	import Stormancer.Infrastructure.SystemRequestIDTypes;
 	import Stormancer.Infrastructure.TokenHandler;
 	import Stormancer.Plugins.PluginBuildContext;
 	import Stormancer.Processors.RequestProcessor;
+	import Stormancer.Processors.SceneDispatcher;
 	import Stormancer.Util.CancellationTokenSource;
 	import Stormancer.Util.Helpers;
 	import com.codecatalyst.promise.CancellationError;
@@ -25,7 +29,6 @@ package Stormancer
 	 */
 	public final class Client
 	{
-		//TODO : implement client
 		private var _apiClient:ApiClient;
 		private var _accountId:String;
 		private var _applicationName:String;
@@ -37,8 +40,7 @@ package Stormancer
 		private var _tokenHandler:TokenHandler = new TokenHandler();
 		
 		private var _requestProcessor:RequestProcessor = new RequestProcessor();
-		//TODO : add scene dispatcher
-		//private var _sceneDispatcher : SceneDispatcher;
+		private var _scenesDispatcher : SceneDispatcher;
 		
 		private var _serializers:Object = {"msgpack/map": new MsgPackSerializer()};
 		
@@ -49,7 +51,9 @@ package Stormancer
 		private var _id:Number = undefined;
 		private var _serverTransportType:String = null;
 		private var _serverConnection:IConnection = null;
-		private var _systemSerializer : ISerializer = new MsgPackSerializer();
+		private var _systemSerializer:ISerializer = new MsgPackSerializer();
+		
+		private var _dependencyResolver : IDependencyResolver = new DefaultDependencyResolver();
 		
 		//TODO: sync clock
 		
@@ -62,10 +66,9 @@ package Stormancer
 			this._dispatcher = config.dispatcher;
 			this._requestProcessor = new RequestProcessor();
 			
-			//TODO : add scene dispatcher
-			//this._scenesDispatcher = new SceneDispatcher();
+			this._scenesDispatcher = new SceneDispatcher();
 			this._dispatcher.addProcessor(this._requestProcessor);
-			//this._dispatcher.addProcessor(this._scenesDispatcher);
+			this._dispatcher.addProcessor(this._scenesDispatcher);
 			
 			this._metadata = config.metadata;
 			
@@ -91,6 +94,8 @@ package Stormancer
 				this._pluginCtx.clientCreated[k](this);
 			}
 			
+			this._dependencyResolver.registerComponent("client", this);
+			
 			this.initialize();
 		}
 		
@@ -109,6 +114,11 @@ package Stormancer
 			return _serverTransportType;
 		}
 		
+		public function get dependencyResolver():IDependencyResolver 
+		{
+			return _dependencyResolver;
+		}
+		
 		public function getPublicScene(sceneId:String, userData:*):Promise
 		{
 			return this._apiClient.getSceneEndpoint(this._accountId, this._applicationName, sceneId, userData).then(function(ci:SceneEndpoint):Promise
@@ -121,6 +131,30 @@ package Stormancer
 		{
 			var ci:SceneEndpoint = this._tokenHandler.decodeToken(token);
 			return this.getSceneImpl(ci.tokenData.SceneId, ci);
+		}
+		
+		public function connectToScene(scene:Scene, token:String, localRoutes:Vector.<Route>):Promise
+		{
+			var parameter:* = {Token: token, Routes: [], ConnectionMetadata: this._serverConnection.metadata};
+			
+			for (var i:Number = 0; i < localRoutes.length; i++)
+			{
+				var r:Route = localRoutes[i];
+				parameter.Routes.push({Handle: r.handle, Metadata: r.metadata, Name: r.name});
+			}
+			
+			var self:Client = this;
+			
+			return this.sendSystemRequest(SystemRequestIDTypes.ID_CONNECT_TO_SCENE, parameter)
+				.then(function (result :*):void 
+				{
+					scene.completeConnectionInitialization(result);
+					self._scenesDispatcher.addScene(scene);
+					for (var i : Number = 0; i < self._pluginCtx.sceneConnected.length; i++)
+					{
+						self._pluginCtx.sceneConnected[i](scene);
+					}
+				});
 		}
 		
 		private function initialize():void
@@ -144,42 +178,41 @@ package Stormancer
 		
 		private function getSceneImpl(sceneId:String, ci:SceneEndpoint):Promise
 		{
-			var self: Client = this;
+			var self:Client = this;
 			
-			return this.ensureTransportStarted(ci)
-			.then(function ():Promise 
+			return this.ensureTransportStarted(ci).then(function():Promise
 			{
-				var parameter: * = {Metadata: self._serverConnection.metadata, Token: ci.token};
+				var parameter:* = {Metadata: self._serverConnection.metadata, Token: ci.token};
 				return self.sendSystemRequest(SystemRequestIDTypes.ID_GET_SCENE_INFOS, parameter);
-			})
-			.then(handleSceneInfosDto)
-			.then(function(sceneInfosDto : * ) : Stormancer.Scene
-		{
-			var scene: Stormancer.Scene = new Stormancer.Scene(self._serverConnection, self, sceneId, ci.token, sceneInfosDto);
-			
-			for (var i : Number = 0; i < self._pluginCtx.sceneCreated.length; i++)
+			}).then(handleSceneInfosDto).then(function(sceneInfosDto:*):Stormancer.Scene
 			{
-				this._pluginCtx.sceneCreated[i](scene);
-			}
-			return scene;
-		});
-			
+				var scene:Stormancer.Scene = new Stormancer.Scene(self._serverConnection, self, sceneId, ci.token, sceneInfosDto);
+				
+				for (var i:Number = 0; i < self._pluginCtx.sceneCreated.length; i++)
+				{
+					this._pluginCtx.sceneCreated[i](scene);
+				}
+				return scene;
+			});
+		
 		}
 		
-		private function handleSceneInfosDto(sceneInfosDto : *):Promise 
+		private function handleSceneInfosDto(sceneInfosDto:*):Promise
 		{
 			if (!this._serverConnection.serializerChosen)
 			{
-				var selectedSerializer : String = sceneInfosDto.SelectedSerializer;
-				if(!selectedSerializer) {
-                        throw new Error("No serializer selected.");
+				var selectedSerializer:String = sceneInfosDto.SelectedSerializer;
+				if (!selectedSerializer)
+				{
+					throw new Error("No serializer selected.");
 				}
 				this._serverConnection.serializer = this._serializers[selectedSerializer];
 				this._serverConnection.metadata["serializer"] = selectedSerializer;
-				this._serverConnection.serializerChosen = true; 
+				this._serverConnection.serializerChosen = true;
+				this._dependencyResolver.registerComponent("serializer", this._serializers[selectedSerializer]);
 			}
 			
-			return this.updateMetadata().then(function (): * 
+			return this.updateMetadata().then(function():*
 			{
 				return sceneInfosDto;
 			});
@@ -203,8 +236,8 @@ package Stormancer
 		
 		private function updateMetadata():Promise
 		{
-			var self: Client = this;
-			return this._requestProcessor.sendSystemRequest(this._serverConnection, SystemRequestIDTypes.ID_SET_METADATA, function(stream : IDataOutput) : void
+			var self:Client = this;
+			return this._requestProcessor.sendSystemRequest(this._serverConnection, SystemRequestIDTypes.ID_SET_METADATA, function(stream:IDataOutput):void
 			{
 				self._systemSerializer.serialize(self._serverConnection.metadata, stream);
 			});
@@ -213,7 +246,7 @@ package Stormancer
 		private function registerConnection(connection:IConnection):void
 		{
 			this._serverConnection = connection;
-			for (var key :String in this._metadata)
+			for (var key:String in this._metadata)
 			{
 				this._serverConnection.metadata[key] = this._metadata[key];
 			}
@@ -225,17 +258,16 @@ package Stormancer
 			return this._transport.start("client", new ConnectionHandler(), this._cts.token);
 		}
 		
-		private function sendSystemRequest(id: Number, parameter: * ): Promise
+		private function sendSystemRequest(id:Number, parameter:*):Promise
 		{
-			var self: Client = this;
-			return this._requestProcessor.sendSystemRequest(this._serverConnection, id, function(stream: IDataOutput) : void
+			var self:Client = this;
+			return this._requestProcessor.sendSystemRequest(this._serverConnection, id, function(stream:IDataOutput):void
 			{
 				self._systemSerializer.serialize(parameter, stream);
-			})
-			.then(deserializeSystemResponse);
+			}).then(deserializeSystemResponse);
 		}
 		
-		private function deserializeSystemResponse(packet : ConnectionPacket) : *
+		private function deserializeSystemResponse(packet:ConnectionPacket):*
 		{
 			if (packet != null)
 			{
@@ -254,38 +286,36 @@ import Stormancer.Infrastructure.IConnectionManager;
 
 class ConnectionHandler implements IConnectionManager
 {
-	private var _current : Number = 0;
+	private var _current:Number = 0;
 	
 	public function ConnectionHandler()
 	{
-		
+	
 	}
 	
 	/* INTERFACE Stormancer.Infrastructure.IConnectionManager */
 	
-	public function generateNewConnectionId() : Number
+	public function generateNewConnectionId():Number
 	{
 		return this._current++;
 	}
 	
-	
-	
-	public function newConnection(connection:IConnection):void 
+	public function newConnection(connection:IConnection):void
 	{
-		
+	
 	}
 	
-	public function closeConnection(connection:IConnection, reason:String):void 
+	public function closeConnection(connection:IConnection, reason:String):void
 	{
-		
+	
 	}
 	
-	public function getConnection(id:Number):IConnection 
+	public function getConnection(id:Number):IConnection
 	{
 		throw new Error("not implemented");
 	}
 	
-	public function get ConnectionCount():Number 
+	public function get ConnectionCount():Number
 	{
 		throw new Error("not implemented");
 	}

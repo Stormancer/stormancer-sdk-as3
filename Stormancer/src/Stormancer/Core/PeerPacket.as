@@ -6,7 +6,7 @@ package Stormancer.Core
 	 * ...
 	 * @author Stormancer
 	 */
-	internal final class PeerPacket extends Packet
+	public final class PeerPacket extends Packet
 	{
 		private var _source:IScenePeer;
 		

@@ -11,6 +11,7 @@ package Stormancer.Transports
 	import com.worlize.websocket.WebSocketErrorEvent;
 	import com.worlize.websocket.WebSocketEvent;
 	import flash.utils.ByteArray;
+	import flash.utils.Endian;
 	
 	/**
 	 * ...
