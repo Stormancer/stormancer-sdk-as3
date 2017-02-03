@@ -40,7 +40,7 @@ package Stormancer
 		private var _tokenHandler:TokenHandler = new TokenHandler();
 		
 		private var _requestProcessor:RequestProcessor = new RequestProcessor();
-		private var _scenesDispatcher : SceneDispatcher;
+		private var _scenesDispatcher:SceneDispatcher;
 		
 		private var _serializers:Object = {"msgpack/map": new MsgPackSerializer()};
 		
@@ -53,7 +53,7 @@ package Stormancer
 		private var _serverConnection:IConnection = null;
 		private var _systemSerializer:ISerializer = new MsgPackSerializer();
 		
-		private var _dependencyResolver : IDependencyResolver = new DefaultDependencyResolver();
+		private var _dependencyResolver:IDependencyResolver = new DefaultDependencyResolver();
 		
 		//TODO: sync clock
 		
@@ -114,7 +114,7 @@ package Stormancer
 			return _serverTransportType;
 		}
 		
-		public function get dependencyResolver():IDependencyResolver 
+		public function get dependencyResolver():IDependencyResolver
 		{
 			return _dependencyResolver;
 		}
@@ -145,16 +145,43 @@ package Stormancer
 			
 			var self:Client = this;
 			
-			return this.sendSystemRequest(SystemRequestIDTypes.ID_CONNECT_TO_SCENE, parameter)
-				.then(function (result :*):void 
+			return this.sendSystemRequest(SystemRequestIDTypes.ID_CONNECT_TO_SCENE, parameter).then(function(result:*):void
+			{
+				scene.completeConnectionInitialization(result);
+				self._scenesDispatcher.addScene(scene);
+				for (var i:Number = 0; i < self._pluginCtx.sceneConnected.length; i++)
 				{
-					scene.completeConnectionInitialization(result);
-					self._scenesDispatcher.addScene(scene);
-					for (var i : Number = 0; i < self._pluginCtx.sceneConnected.length; i++)
-					{
-						self._pluginCtx.sceneConnected[i](scene);
-					}
+					self._pluginCtx.sceneConnected[i](scene);
+				}
+			});
+		}
+		
+		public function disconnect(scene:Scene, handle:Number, notifyServer:Boolean):Promise
+		{
+			if (notifyServer)
+			{
+				var self:Client = this;
+				
+				return this.sendSystemRequest(SystemRequestIDTypes.ID_DISCONNECT_FROM_SCENE, handle).then(function():void
+				
+				{
+					self.cleanSceneForDisconnection(scene, handle);
 				});
+			}
+			else
+			{
+				this.cleanSceneForDisconnection(scene, handle);
+				return Promise.when(true);
+			}
+		}
+		
+		public function cleanSceneForDisconnection(scene:Scene, handle:Number):void
+		{
+			this._scenesDispatcher.removeScene(handle);
+			for (var i:int = 0; i < this._pluginCtx.sceneDisconnected.length; i++)
+			{
+				this._pluginCtx.sceneDisconnected[i](scene);
+			}
 		}
 		
 		private function initialize():void

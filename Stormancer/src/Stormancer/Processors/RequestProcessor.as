@@ -6,6 +6,7 @@ package Stormancer.Processors
 	import Stormancer.Infrastructure.MessageIDTypes;
 	import Stormancer.Infrastructure.Observer;
 	import Stormancer.Infrastructure.PacketProcessorConfig;
+	import Stormancer.Infrastructure.SystemRequestIDTypes;
 	import com.codecatalyst.promise.Deferred;
 	import com.codecatalyst.promise.Promise;
 	import flash.utils.ByteArray;
@@ -144,6 +145,7 @@ package Stormancer.Processors
 			return true;
 		}
 		
+		
 		private function reserveRequestSlot(observer:Observer):SystemRequest
 		{
 			var i:Number = 0;
@@ -180,6 +182,7 @@ package Stormancer.Processors
 			
 			return deferred.promise;
 		}
+	
 	}
 }
 

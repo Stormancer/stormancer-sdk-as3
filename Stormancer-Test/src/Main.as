@@ -2,6 +2,7 @@ package
 {
 	import Stormancer.Client;
 	import Stormancer.Configuration;
+	import Stormancer.Plugins.RpcService;
 	import Stormancer.Scene;
 	import Stormancer.Infrastructure.ApiClient;
 	import Stormancer.Infrastructure.TokenHandler;
@@ -41,20 +42,28 @@ package
 			{
 				trace(value);
 			});
+			scene.onDisconnection.push(function(reason:String)
+			{
+				trace(reason);
+			});
 			return scene.connect();
 		}
 		
 		private function CreateSceneAndConnect():void
 		{
-			var accountId:String = "local-test";
-			var appId:String = "wsstring";
+			var accountId:String = "localtest";
+			//var accountId:String = "jn-test";
+			
+			var appId:String = "echo";
 			var sceneId:String = "echo-main";
 			
-			var config:Configuration = Configuration.forAccount("http://127.0.0.1:8081/", accountId, appId);
+			var config:Configuration = Configuration.forAccount("http://192.168.1.138:8081/", accountId, appId);
+			
+			//var config:Configuration = Configuration.forAccount("https://api.stormancer.com/", accountId, appId);
 			
 			var client:Client = new Client(config);
 			
-			client.getPublicScene(sceneId, 1).then(initAndConnectScene).then(sendSomething).then(onssuccess, onfailure);
+			client.getPublicScene(sceneId, 1).then(initAndConnectScene).then(sendSomething).then(onSuccess, onfailure);
 		}
 		
 		private function sendSomething():void
@@ -62,13 +71,20 @@ package
 			this._scene.send("echo.in", "test");
 		}
 		
-		private function onssuccess():void
+		private function onSuccess():void
 		{
 			trace("success!");
+		//	this._scene.disconnect().then(onDisconnectedSuccess, onfailure);
+		}
+		
+		private function onDisconnectedSuccess():void
+		{
+			trace("disconnected from scene");		
 		}
 		
 		private function onfailure(error:*):void
 		{
+			trace("failure!");
 			trace(error);
 		}
 	

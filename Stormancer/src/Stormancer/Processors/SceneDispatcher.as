@@ -4,6 +4,7 @@ package Stormancer.Processors
 	import Stormancer.Infrastructure.IPacketProcessor;
 	import Stormancer.Infrastructure.MessageIDTypes;
 	import Stormancer.Infrastructure.PacketProcessorConfig;
+	import Stormancer.Infrastructure.SystemRequestIDTypes;
 	import Stormancer.Scene;
 	
 	/**
@@ -22,7 +23,8 @@ package Stormancer.Processors
 		/* INTERFACE Stormancer.Infrastructure.IPacketProcessor */
 		
 		public function registerProcessor(config:PacketProcessorConfig):void
-		{
+		{			
+			config.addProcessor(SystemRequestIDTypes.ID_DISCONNECT_FROM_SCENE, processDisconnectFromScene);
 			config.addCatchAllProcessor(handler);
 		}
 		
@@ -77,6 +79,18 @@ package Stormancer.Processors
 			delete this._scenes[sceneHandle - MessageIDTypes.ID_SCENES];
 		}
 	
+		
+		private function processDisconnectFromScene(packet:ConnectionPacket):Boolean
+		{
+			var msg:* = packet.source.serializer.deserialize(packet.data);
+			
+			var scene: Scene = this._scenes[msg.Handle -  MessageIDTypes.ID_SCENES];
+			scene.onDisconnect((String)(msg.Reason));
+			
+			return true;
+		}
+		
+
 	}
 
 }

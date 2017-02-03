@@ -34,6 +34,12 @@ package Stormancer
 		private var _packetReceived:Vector.<Function> = new Vector.<Function>();
 		private var _dependencyResolver : IDependencyResolver;
 		
+		private var _onDisconnection : Vector.<Function> = new Vector.<Function>();
+		public function get onDisconnection():Vector.<Function> 
+		{
+			return _onDisconnection;
+		}
+		
 		public function Scene(connection:IConnection, client:Client, id:String, token:String, dto:*)
 		{
 			this._hostConnection = connection;
@@ -219,6 +225,26 @@ package Stormancer
 		public function addPacketReceivedHandler(handler:Function):void
 		{
 			this._packetReceived.push(handler);
+		}
+		
+		public function disconnect() : Promise
+		{
+			this._connected = false;
+			return this._client.disconnect(this, this._handle, true);
+		}
+		
+		public function onDisconnect(reason:String):void 
+		{
+			this._connected = false;
+			for (var i:int; i < _onDisconnection.length; i++)
+			{
+				var callback = _onDisconnection[i];
+				if (callback)
+				{
+					callback(reason);
+				}
+			}
+			this._client.disconnect(this, this._handle, false); 
 		}
 	}
 
