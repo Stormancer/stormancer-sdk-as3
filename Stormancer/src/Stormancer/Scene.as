@@ -238,7 +238,7 @@ package Stormancer
 			this._connected = false;
 			for (var i:int; i < _onDisconnection.length; i++)
 			{
-				var callback = _onDisconnection[i];
+				var callback : Function = _onDisconnection[i];
 				if (callback)
 				{
 					callback(reason);

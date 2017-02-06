@@ -40,7 +40,7 @@ package Stormancer.Processors
 			if (!scene)
 			{
 				var buffer:Vector.<ConnectionPacket> = this._buffers[sceneIndex];
-				if (buffer != null)
+				if (buffer == null)
 				{
 					buffer = new Vector.<ConnectionPacket>();
 					this._buffers[sceneIndex] = buffer;
@@ -67,7 +67,7 @@ package Stormancer.Processors
 				delete this._buffers[sceneIndex];
 				while (buffer.length > 0)
 				{
-					var packet:ConnectionPacket = buffer.pop();
+					var packet:ConnectionPacket = buffer.shift();
 					packet.setMetadataValue("scene", scene);
 					scene.handleMessage(packet);
 				}
