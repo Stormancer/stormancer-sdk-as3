@@ -140,11 +140,17 @@ package Stormancer.Processors
 			
 			delete this._pendingRequests[id];
 			
-			var msg:* = packet.source.serializer.deserialize(packet.data);
-			request.observer.OnError(new Error(msg));
+			if (packet.source.serializer != null)
+			{
+				var msg:* = packet.source.serializer.deserialize(packet.data);
+				request.observer.OnError(new Error(msg));
+			}
+			else
+			{
+				request.observer.OnError(new Error("An error occurred while processing this request, and no serializer could be set."));
+			}
 			return true;
 		}
-		
 		
 		private function reserveRequestSlot(observer:Observer):SystemRequest
 		{

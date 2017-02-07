@@ -239,7 +239,7 @@ package Stormancer
 			for (var i:int; i < _onDisconnection.length; i++)
 			{
 				var callback : Function = _onDisconnection[i];
-				if (callback)
+				if (callback != null)
 				{
 					callback(reason);
 				}
