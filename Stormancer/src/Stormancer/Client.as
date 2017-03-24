@@ -1,6 +1,7 @@
 package Stormancer
 {
 	import Stormancer.Core.ConnectionPacket;
+	import Stormancer.Core.ConnectionState;
 	import Stormancer.Core.DefaultDependencyResolver;
 	import Stormancer.Core.IConnection;
 	import Stormancer.Core.IDependencyResolver;
@@ -158,12 +159,13 @@ package Stormancer
 		
 		public function disconnect(scene:Scene, handle:Number, notifyServer:Boolean):Promise
 		{
+			SetConnectionState(Stormancer.Core.ConnectionState.Disconnecting);			
+			var self:Client = this;
+			var result : Promise;
 			if (notifyServer)
 			{
-				var self:Client = this;
 				
-				return this.sendSystemRequest(SystemRequestIDTypes.ID_DISCONNECT_FROM_SCENE, handle).then(function():void
-				
+				result = this.sendSystemRequest(SystemRequestIDTypes.ID_DISCONNECT_FROM_SCENE, handle).then(function():void				
 				{
 					self.cleanSceneForDisconnection(scene, handle);
 				});
@@ -171,8 +173,13 @@ package Stormancer
 			else
 			{
 				this.cleanSceneForDisconnection(scene, handle);
-				return Promise.when(true);
+				result = Promise.when(true);
 			}
+			
+			return result.Then(function() :void
+			{
+				self.SetConnectionState(Stormancer.Core.ConnectionState.Disconnected);
+			});
 		}
 		
 		public function cleanSceneForDisconnection(scene:Scene, handle:Number):void
@@ -257,6 +264,9 @@ package Stormancer
 				{
 					self.registerConnection(c);
 					return self.updateMetadata();
+				}).then(function():void
+				{
+					self.SetConnectionState(Stormancer.Core.ConnectionState.Connected);
 				});
 			}, this);
 		}
@@ -273,14 +283,20 @@ package Stormancer
 		private function registerConnection(connection:IConnection):void
 		{
 			this._serverConnection = connection;
+			
 			for (var key:String in this._metadata)
 			{
 				this._serverConnection.metadata[key] = this._metadata[key];
 			}
+			var self : Client = this;
+			connection.onDisconnection.push(function(reason:String) :void{
+				self.SetConnectionState(Stormancer.Core.ConnectionState.Disconnected);
+			});
 		}
 		
 		private function startTransport():Promise
 		{
+			this.SetConnectionState(Stormancer.Core.ConnectionState.Connecting);
 			this._cts = new CancellationTokenSource();
 			return this._transport.start("client", new ConnectionHandler(), this._cts.token);
 		}
@@ -303,6 +319,37 @@ package Stormancer
 			else
 			{
 				return null;
+			}
+		}
+		
+		private var _connectionState:Number = Stormancer.Core.ConnectionState.Disconnected;
+		
+		public function get ConnectionState():Number
+		{
+			return _connectionState;
+		}
+		
+		private var _onConnectionStateChanged:Vector.<Function> = new Vector.<Function>();
+		
+		public function get OnConnectionStateChanged():Vector.<Function>
+		{
+			return _onConnectionStateChanged;
+		}
+		
+		private function SetConnectionState(connectionState:Number):void
+		{
+			if (connectionState != this._connectionState)
+			{
+				this._connectionState = connectionState;
+				
+				for (var i:int; i < _onConnectionStateChanged.length; i++)
+				{
+					var callback:Function = _onConnectionStateChanged[i];
+					if (callback != null)
+					{
+						callback(connectionState);
+					}
+				}
 			}
 		}
 	}

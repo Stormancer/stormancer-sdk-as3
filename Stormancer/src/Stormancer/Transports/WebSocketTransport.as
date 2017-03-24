@@ -152,6 +152,7 @@ package Stormancer.Transports
 			}
 			else
 			{
+				this._connection.onDisconnect("DISCONNECTED");
 				this._connectionManager.closeConnection(this._connection, "DISCONNECTED");
 				
 				for (var i:Number = 0; i < this._ConnectionClosed.length; i++)

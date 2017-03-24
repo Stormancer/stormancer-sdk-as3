@@ -42,7 +42,7 @@ package
 			{
 				trace(value);
 			});
-			scene.onDisconnection.push(function(reason:String)
+			scene.onDisconnection.push(function(reason:String) : void
 			{
 				trace(reason);
 			});

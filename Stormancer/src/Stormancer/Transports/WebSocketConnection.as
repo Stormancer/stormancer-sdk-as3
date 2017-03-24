@@ -23,6 +23,12 @@ package Stormancer.Transports
 		private var _state:Number;
 		private var _application:String;
 		
+		private var _onDisconnection : Vector.<Function> = new Vector.<Function>();
+		public function get onDisconnection():Vector.<Function> 
+		{
+			return _onDisconnection;
+		}
+		
 		public function WebSocketConnection(id:Number, socket:WebSocket)
 		{
 			this._socket = socket;
@@ -115,6 +121,19 @@ package Stormancer.Transports
 		{
 			this._account = account;
 			this._application = application;
+		}
+		
+		public function void onDisconnect(reason:String):void
+		{
+			this._state = ConnectionState.Disconnected;
+			for (var i:int; i < _onDisconnection.length; i++)
+			{
+				var callback : Function = _onDisconnection[i];
+				if (callback != null)
+				{
+					callback(reason);
+				}
+			}
 		}
 	}
 }

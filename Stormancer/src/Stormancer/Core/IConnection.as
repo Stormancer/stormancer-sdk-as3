@@ -16,6 +16,7 @@ package Stormancer.Core
 		function set serializer(value:ISerializer):void;
 		function get serializerChosen():Boolean;
 		function set serializerChosen(value:Boolean):void 
+		function get onDisconnection():Vector.<Function> 
 		
 		function close():void;
 		/**
