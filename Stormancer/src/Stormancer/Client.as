@@ -176,7 +176,7 @@ package Stormancer
 				result = Promise.when(true);
 			}
 			
-			return result.Then(function() :void
+			return result.then(function() :void
 			{
 				self.SetConnectionState(Stormancer.Core.ConnectionState.Disconnected);
 			});
