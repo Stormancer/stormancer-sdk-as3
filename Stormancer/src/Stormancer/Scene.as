@@ -230,7 +230,7 @@ package Stormancer
 		public function disconnect() : Promise
 		{
 			this._connected = false;
-			return this._client.disconnect(this, this._handle, true);
+			return this._client.disconnectScene(this, this._handle, true);
 		}
 		
 		public function onDisconnect(reason:String):void 
@@ -244,7 +244,7 @@ package Stormancer
 					callback(reason);
 				}
 			}
-			this._client.disconnect(this, this._handle, false); 
+			this._client.disconnectScene(this, this._handle, false); 
 		}
 	}
 

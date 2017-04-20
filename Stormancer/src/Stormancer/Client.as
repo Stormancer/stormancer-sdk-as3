@@ -157,9 +157,8 @@ package Stormancer
 			});
 		}
 		
-		public function disconnect(scene:Scene, handle:Number, notifyServer:Boolean):Promise
-		{
-			SetConnectionState(Stormancer.Core.ConnectionState.Disconnecting);			
+		public function disconnectScene(scene:Scene, handle:Number, notifyServer:Boolean):Promise
+		{					
 			var self:Client = this;
 			var result : Promise;
 			if (notifyServer)
@@ -176,10 +175,7 @@ package Stormancer
 				result = Promise.when(true);
 			}
 			
-			return result.then(function() :void
-			{
-				self.SetConnectionState(Stormancer.Core.ConnectionState.Disconnected);
-			});
+			return result;
 		}
 		
 		public function cleanSceneForDisconnection(scene:Scene, handle:Number):void
@@ -351,6 +347,16 @@ package Stormancer
 					}
 				}
 			}
+		}
+		
+		public function disconnect() : void
+		{
+			SetConnectionState(Stormancer.Core.ConnectionState.Disconnecting);
+			if (_serverConnection)
+			{
+				_serverConnection.close();
+			}
+			SetConnectionState(Stormancer.Core.ConnectionState.Disconnected);
 		}
 	}
 
